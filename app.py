@@ -1,5 +1,5 @@
 import streamlit as st
-import pickle
+import joblib
 import numpy as np
 
 # --------------------------------------------------
@@ -18,9 +18,8 @@ st.set_page_config(
 
 @st.cache_resource
 def cargar_modelo():
-    with open("mimodelo.pkl", "rb") as archivo:
-        modelo = pickle.load(archivo)
-    return modelo
+    return joblib.load("mimodelo.pkl")
+
 
 modelo = cargar_modelo()
 
@@ -28,20 +27,38 @@ modelo = cargar_modelo()
 # Interfaz
 # --------------------------------------------------
 
-st.title("🌸 Clasificación de flores Iris")
+st.title("🌸 Clasificador de flores Iris")
 
 st.write(
-    "Ingresa las medidas de una flor Iris para predecir "
-    "si pertenece a **Setosa, Versicolor o Virginica**."
+    "Ingresa las características de una flor Iris "
+    "para predecir su variedad."
 )
 
-st.subheader("Datos de la flor")
+st.markdown(
+    """
+    **Variables utilizadas por el modelo:**
+
+    - `sepal.length`
+    - `sepal.width`
+    - `petal.length`
+    - `petal.width`
+    """
+)
+
+st.divider()
+
+# --------------------------------------------------
+# Entrada de datos
+# --------------------------------------------------
+
+st.subheader("Características de la flor")
 
 col1, col2 = st.columns(2)
 
 with col1:
+
     sepal_length = st.number_input(
-        "Longitud del sépalo (cm)",
+        "sepal.length",
         min_value=0.0,
         max_value=10.0,
         value=5.1,
@@ -49,7 +66,7 @@ with col1:
     )
 
     sepal_width = st.number_input(
-        "Ancho del sépalo (cm)",
+        "sepal.width",
         min_value=0.0,
         max_value=10.0,
         value=3.5,
@@ -57,8 +74,9 @@ with col1:
     )
 
 with col2:
+
     petal_length = st.number_input(
-        "Longitud del pétalo (cm)",
+        "petal.length",
         min_value=0.0,
         max_value=10.0,
         value=1.4,
@@ -66,7 +84,7 @@ with col2:
     )
 
     petal_width = st.number_input(
-        "Ancho del pétalo (cm)",
+        "petal.width",
         min_value=0.0,
         max_value=10.0,
         value=0.2,
@@ -79,6 +97,7 @@ with col2:
 
 if st.button("🔮 Realizar predicción", type="primary"):
 
+    # Crear matriz con el mismo orden de variables
     datos = np.array([[
         sepal_length,
         sepal_width,
@@ -86,38 +105,41 @@ if st.button("🔮 Realizar predicción", type="primary"):
         petal_width
     ]])
 
+    # Realizar predicción
     prediccion = modelo.predict(datos)[0]
 
-    # Si el modelo devuelve números 0, 1 y 2
-    nombres = {
-        0: "Setosa",
-        1: "Versicolor",
-        2: "Virginica"
-    }
+    st.divider()
 
-    especie = nombres.get(prediccion, str(prediccion))
+    st.subheader("Resultado")
 
-    st.success(f"🌸 La especie predicha es: **{especie}**")
+    st.success(
+        f"🌸 Variedad predicha: **{prediccion}**"
+    )
 
-    # Mostrar probabilidades si el modelo las permite
+    # --------------------------------------------------
+    # Probabilidades
+    # --------------------------------------------------
+
     if hasattr(modelo, "predict_proba"):
+
         probabilidades = modelo.predict_proba(datos)[0]
 
-        st.subheader("Probabilidad de cada clase")
+        st.subheader("Probabilidad de predicción")
 
-        clases = getattr(
-            modelo,
-            "classes_",
-            [0, 1, 2]
-        )
+        # Obtener nombres de las clases directamente
+        # desde el modelo
+        if hasattr(modelo, "classes_"):
 
-        for clase, probabilidad in zip(clases, probabilidades):
+            clases = modelo.classes_
 
-            nombre = nombres.get(clase, str(clase))
+            for clase, probabilidad in zip(
+                clases,
+                probabilidades
+            ):
 
-            st.write(
-                f"**{nombre}:** "
-                f"{probabilidad * 100:.2f}%"
-            )
+                st.write(
+                    f"**{clase}:** "
+                    f"{probabilidad * 100:.2f}%"
+                )
 
-            st.progress(float(probabilidad))
+                st.progress(float(probabilidad))
